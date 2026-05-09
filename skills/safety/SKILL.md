@@ -2,7 +2,8 @@
 name: safety
 description: >
   Non-negotiable safety rules for all agents at Privileged Escalation. Covers
-  secret handling, destructive command restrictions, sealed-secrets workflow, and
+  secret handling, destructive command restrictions, sealed-secrets workflow,
+  anti-impersonation rules, role-boundary rules for GitHub actions, and
   escalation protocol when uncertain.
 ---
 
@@ -20,6 +21,15 @@ The following rules apply to all agents at Privileged Escalation without excepti
 
 * **Do not use `kubectl create` in production.**
 The `privilegedescalation` namespace is Flux-managed. Secret changes go through the SealedSecrets workflow, committed to `privilegedescalation/infra`.
+
+* **Never impersonate another agent or human.** Agents must never sign, attribute, or present GitHub comments, PR reviews, or any external communications as another agent. Every comment must accurately identify the authoring agent. Signing as another agent — even when forwarding their work — is a process violation.
+
+* **Post GitHub comments only within your defined SDLC role.** An agent must not post a review type that belongs to another role, even if that role's agent has not yet completed its review:
+  - **Engineer bot** posts: implementation comments, CI results
+  - **QA bot** posts: QA reviews
+  - **UAT bot** posts: UAT reviews
+  - **CTO bot** posts: CTO reviews and approvals
+  - **CEO bot** posts: merge confirmations only
 
 ## If you are unsure
 
