@@ -3,8 +3,7 @@ name: sdlc
 description: >
   Software development lifecycle rules for Privileged Escalation. Covers GitHub
   issue approval gates, authentication, branch strategy, PR review policy,
-  pipeline stages, agent roster, handoff protocol, status semantics, CI/CD,
-  security review, and work distribution.
+  pipeline stages, handoff protocol, status semantics, CI/CD, and security review.
 ---
 
 # Software Development Lifecycle
@@ -68,119 +67,41 @@ Requires **3 approving GitHub reviews** before the CEO merges:
 
 **Review order is mandatory: CI → UAT → QA → CTO → CEO merge.** Each stage gates the next. No agent merges their own PRs.
 
-## 48-Hour PR Review SLA (Binding)
+## 48-Hour PR Review SLA
 
-**MANDATORY: Every open PR must receive its first review within 48 hours of submission. No exceptions.**
+Every open PR must receive its first review within 48 hours. Each reviewer's SLA starts when the previous stage approves.
 
-### SLA Assignments & Responsibility
-- **0-24 hours:** Assigned reviewer must begin review (or explicitly hand off)
-- **24-48 hours:** Assigned reviewer must complete review or be flagged for SLA violation
-- **48+ hours:** SLA violation is documented and escalated
+- **24h:** CEO tags reviewer and surfaces PR in daily status
+- **48h:** SLA violation; CEO escalates to reviewer's manager
+- **72h+:** Critical-path PRs block the next release
 
-### Assigned Reviewers & Accountability
-1. **UAT (Pixel Patty)** — responsible for all PRs needing E2E testing
-   - SLA: Initial E2E test within 48 hours of open
-2. **QA (Regression Regina)** — responsible for code review after UAT pass
-   - SLA: Code review within 48 hours of UAT approval
-3. **CTO (Null Pointer Nancy)** — responsible for architecture/security review after QA pass
-   - SLA: Architecture review within 48 hours of QA approval
-4. **CEO (Countess von Containerheim)** — responsible for SLA enforcement
-   - Enforces SLA via daily audit and escalation
-
-### Escalation Protocol (CEO Responsibility)
-- **At 24 hours:** CEO tags reviewer with automated comment and surfaces PR in daily status
-- **At 48 hours:** CEO blocks PR from merge queue; escalates to reviewer's manager (CTO for most)
-- **At 72+ hours:** If critical-path, PR blocks next release until review completes or reviewer hands off
-
-### Exception Policy
-If a reviewer cannot meet SLA:
-- They must explicitly hand off to another reviewer within the 48-hour window
-- If hand-off doesn't happen, the SLA breach is documented and escalated
-- Rare exceptions require board approval (documented in PR)
-
-### Enforcement Mechanism
-CEO creates daily automated report of SLA status and escalates immediately when thresholds breach. This is non-negotiable work.
+Reviewers who cannot meet SLA must hand off within the window. No exceptions without board approval.
 
 ## Pipeline
 
-```
-CI:    Engineer opens PR → CI runs (lint, types, unit tests)
-UAT:   Pixel Patty validates E2E in headlamp-dev
-QA:    Regression Regina reviews code quality and test coverage
-CTO:   Null Pointer Nancy reviews architecture and security
-Merge: Countess von Containerheim merges after all approvals
-```
+### Pipeline A: Plugin/Feature Changes
 
-### Stage 1 — Engineer Opens PR
+CI → UAT (Patty) → QA (Regina) → CTO (Nancy) → CEO merge
 
-1. Engineer (Gandalf the Greybeard) creates a feature branch and opens a PR targeting `main`.
-2. CI runs automatically: lint, type checks, unit tests.
-3. CI must pass before any reviewer spends tokens. If CI fails, the engineer fixes it.
+Applies to changes in `headlamp-*-plugin/` repos (plugin code, features, bug fixes).
 
-### Stage 2 — UAT Review
+### Pipeline B: Infrastructure Changes (No UI Impact)
 
-4. Pixel Patty picks up PRs with passing CI.
-5. Patty runs E2E browser testing against the deployed build in `headlamp-dev`.
-6. Pass → hands off to QA. Fail → goes directly to engineer.
+CI → QA (Regina) → CTO (Nancy) → CEO merge
 
-### Stage 3 — QA Review
+Applies to changes in `.github/workflows/`, `infra/`, `org/` repos, and template repos.
 
-7. Regression Regina picks up PRs that have passed both CI and UAT.
-8. Regina reviews: test coverage, regressions, edge cases, code quality.
-9. Pass → hands off to CTO. Fail → goes directly to engineer.
+**Detection:** If `git diff` shows changes only in `.github/`, `infra/`, `org/`, or deployment files → Pipeline B. If any `headlamp-*-plugin/` code changed → Pipeline A.
 
-### Stage 4 — CTO Review
+**Failure routing:** Any stage failure returns directly to the engineer. CEO rejections route through CTO.
 
-10. Null Pointer Nancy picks up PRs that have passed CI, UAT, and QA.
-11. Nancy reviews: architecture alignment, code quality, security.
-12. Approve → PR is ready for merge. Request changes → goes directly to engineer.
+## Handoff Protocol
 
-### Stage 5 — CEO Merge
+Every handoff requires all three steps:
 
-13. Countess von Containerheim merges the PR after all three approvals (UAT + QA + CTO) and CI passing.
-14. Reject → returns to CTO → engineer.
-
-### Hierarchy Rules
-
-- CTO rejections go directly to engineer (not through QA or UAT).
-- UAT failures go directly to engineer (not through QA or UAT).
-- QA failures go directly to engineer (not through QA or UAT).
-- CEO rejections go to CTO, who cascades to engineer.
-- The CTO is the single routing point for all failures and rejections to and from the CEO.
-
-## Agent Roster
-
-| Role | Agent | Paperclip UUID |
-|------|-------|----------------|
-| CEO | Countess von Containerheim | `498f4d36-8e5b-4114-8514-d0698a091bd5` |
-| CTO | Null Pointer Nancy | `ed1eec37-f868-41b6-bc72-a3493bbce090` |
-| Staff Engineer | Gandalf the Greybeard | `fc07dd00-c4c2-4fa0-9a18-dd6fbb1d1eb4` |
-| QA Engineer | Regression Regina | `fd5dbec8-ddbb-4b57-9703-624e0ed90053` |
-| UAT Engineer | Pixel Patty | `01ec02f7-70c2-4fa1-ac3f-2545f1237ac3` |
-| VP Engineering Ops | Hugh Hackman | `2c97cff6-0f0b-4cff-967f-ca244eb2ef9b` |
-| CMO | Kubectl Karen | `95314e13-bea7-459d-a637-92381dede759` |
-
-## Handoff Protocol — Mandatory
-
-Every handoff to another agent requires ALL THREE steps:
-
-### Step 1 — Explicit Assignment
-
-PATCH the issue with `assigneeAgentId: "<target-agent-uuid>"`.
-@mentioning is NOT a handoff — the agent won't wake without explicit assignment.
-
-### Step 2 — Status = `todo`
-
-Every handoff sets `status: "todo"`. Never `in_review` — it doesn't appear in inbox-lite and the target agent won't wake.
-
-### Step 3 — Release Checkout
-
-```
-POST /api/issues/{issueId}/release
-Headers: Authorization: Bearer $PAPERCLIP_API_KEY, X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID
-```
-
-Without this release, the receiving agent cannot checkout the issue.
+1. `PATCH` the issue with `assigneeAgentId: "<target-agent-uuid>"`
+2. Set `status: "todo"` (never `in_review` — it won't trigger inbox)
+3. `POST /api/issues/{issueId}/release` with `X-Paperclip-Run-Id` header to release checkout
 
 ## Status Semantics
 
@@ -196,34 +117,12 @@ Without this release, the receiving agent cannot checkout the issue.
 
 **Never use `in_review` for handoffs.** It does not trigger inbox-lite and the receiving agent will not wake.
 
-## Status Transition Rules
-
-| Handoff | Correct Status |
-|---------|----------------|
-| Engineer → UAT (Patty) | `todo` |
-| UAT (Patty) → QA (Regina) | `todo` |
-| QA (Regina) → CTO (Nancy) | `todo` |
-| CTO (Nancy) → CEO (Countess) | `todo` |
-| Any failure → Engineer | `todo` |
-| CEO rejection → CTO (Nancy) | `todo` |
-| CTO (Nancy) → Engineer (fix) | `todo` |
-
 ## CI/CD
 
 - CI runs on self-hosted ARC runners: `runs-on: runners-privilegedescalation`
-- Only Hugh Hackman has write access to `.github/workflows/` files
-- All CI/CD workflow changes must be delegated to Hugh
+- Engineers may modify `.github/workflows/` files directly via PR
 - Runners scale to zero when idle and start automatically when a workflow triggers
 
 ## Security Review
 
 Security review is handled as part of the CTO review stage. Null Pointer Nancy evaluates security concerns during her architecture and code quality review. There is no separate dedicated security review agent.
-
-## Work Distribution
-
-- All engineering and devops work is broken down and distributed by the CTO (Nancy).
-- Engineers do not self-assign — the CTO triages, scopes, and assigns all implementation tasks.
-- Hugh Hackman owns CI/CD, infrastructure, and pipeline work.
-- Gandalf the Greybeard owns plugin implementation.
-- Regression Regina owns QA review and test coverage.
-- Pixel Patty owns UAT/E2E browser testing.
