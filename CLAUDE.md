@@ -12,6 +12,7 @@ This is the **Privileged Escalation org-level repository**. It contains company-
   - `skills/safety/SKILL.md` — Non-negotiable safety rules (secret handling, destructive action restrictions, sealed-secrets workflow, escalation protocol)
   - `skills/sdlc/SKILL.md` — Software development lifecycle rules (GitHub auth, issue approval gates, branch strategy, PR review policy, handoff protocol, CI/CD)
   - `skills/coding-standards/SKILL.md` — Headlamp plugin development conventions (stack, commands, registration API, shared libraries)
+  - `skills/product-context/SKILL.md` — Product context (plugin portfolio, target users, competitive landscape, evaluation framework, feature spec template)
 
 ## Skill File Format
 
@@ -31,4 +32,4 @@ Content...
 
 ## Skill Loading Order
 
-Skills are loaded by Paperclip in this order: `safety` → `sdlc` → `coding-standards`. Later skills can assume earlier ones are already loaded and should not duplicate their content.
+Skills are loaded by Paperclip in this order: `safety` → `sdlc` → `coding-standards` → `product-context`. Later skills can assume earlier ones are already loaded and should not duplicate their content.
