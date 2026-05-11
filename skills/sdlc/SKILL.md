@@ -18,7 +18,7 @@ Token expires after ~1 hour. Re-invoke the skill to regenerate if needed.
 
 **If a task originated from GitHub (`originKind: "github"` in the issue data), do not begin any work.** Immediately create a `request_board_approval`:
 
-```
+```json
 POST /api/companies/{companyId}/approvals
 {
   "type": "request_board_approval",

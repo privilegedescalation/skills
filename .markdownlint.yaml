@@ -1,0 +1,12 @@
+# Markdownlint configuration for the org repo.
+# Skill files intentionally use longer lines and emphasis-as-headings.
+# Allow these patterns for skills directory.
+
+# Line length is disabled for skill documentation
+MD013: false
+
+# Emphasis used as headings is allowed in skill files
+MD036: false
+
+# Compact table style is allowed
+MD060: false
