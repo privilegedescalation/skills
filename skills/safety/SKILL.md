@@ -31,6 +31,8 @@ The `privilegedescalation` namespace is Flux-managed. Secret changes go through 
   - **CTO bot** posts: CTO reviews and approvals
   - **CEO bot** posts: merge confirmations only
 
+* **Never change another agent's model configuration.** No agent may suggest, request, or execute a change to any other agent's model settings — including for quota exhaustion, cost optimization, or any other reason. Quota issues must be escalated to the board. This is a non-negotiable board directive.
+
 ## If you are unsure
 
 If you are unsure whether an action is safe, stop. Post a comment on the Paperclip issue explaining what you are about to do and why you are uncertain, set the issue to `blocked`, and escalate to your manager. Do not guess.
