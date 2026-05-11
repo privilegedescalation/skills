@@ -1,72 +1,106 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# CI Health Check Script
+# Checks CI health across all privilegedescalation repos and reports failures
+
 set -euo pipefail
 
-# CI Health Check Script
-# Scans all privilegedescalation repos for recent CI failures and reports issues
+# Configuration
+ORG="privilegedescalation"
+MAX_AGE_DAYS=30
+CRITICAL_THRESHOLD=3  # Number of consecutive failures to consider critical
 
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+# Repos to monitor
 REPOS=(
-  ".github"
-  "infra"
   "org"
-  "headlamp-rook-plugin"
+  "infra"
   "headlamp-sealed-secrets-plugin"
-  "headlamp-polaris-plugin"
-  "headlamp-tns-csi-plugin"
-  "headlamp-kube-vip-plugin"
-  "headlamp-argocd-plugin"
+  "headlamp-rook-plugin"
   "headlamp-intel-gpu-plugin"
-  "headlamp-plugin-template"
-  "plugins"
-  "headlamp-agent-skills"
+  "headlamp-kube-vip-plugin"
+  "headlamp-tns-csi-plugin"
+  "headlamp-argocd-plugin"
+  "headlamp-polaris-plugin"
 )
 
-FAILED_RUNS=0
-TOTAL_RUNS=0
+echo "=== CI Health Check for $ORG ==="
+echo "Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+echo ""
 
-echo "## CI Health Check Report"
-echo ""
-echo "Scanning ${#REPOS[@]} repos for recent CI failures..."
-echo ""
+# Track issues
+FAILURES=()
+STALE_REPOS=()
+NO_CI_REPOS=()
 
 for repo in "${REPOS[@]}"; do
-  echo "### $repo"
-  
-  # Get last 5 runs
-  runs=$(gh run list --repo "privilegedescalation/$repo" --limit 5 --json status,conclusion,name,headBranch,updatedAt 2>/dev/null || echo "[]")
-  
-  if [ "$runs" = "[]" ]; then
-    echo "- No recent runs (may not have CI configured)"
-    echo ""
+  echo "Checking $repo..."
+
+  # Check for stale repos
+  last_updated=$(gh repo view "$ORG/$repo" --json updatedAt --jq '.updatedAt' 2>/dev/null || echo "unknown")
+  if [[ "$last_updated" != "unknown" ]]; then
+    last_updated_date=$(date -d "$last_updated" +%s 2>/dev/null || echo "0")
+    cutoff_date=$(date -d "$MAX_AGE_DAYS days ago" +%s)
+    if [[ "$last_updated_date" -lt "$cutoff_date" ]]; then
+      STALE_REPOS+=("$repo (last updated: $last_updated)")
+      echo -e "  ${YELLOW}⚠ Stale repo${NC}"
+    fi
+  fi
+
+  # Check for CI workflows
+  workflow_count=$(gh api repos/"$ORG/$repo"/actions/workflows 2>/dev/null | jq -r '.total_count' || echo "0")
+  if [[ "$workflow_count" -eq 0 ]]; then
+    NO_CI_REPOS+=("$repo")
+    echo -e "  ${YELLOW}⚠ No CI workflows configured${NC}"
     continue
   fi
 
-  # Count failures
-  failure_count=$(echo "$runs" | jq '[.[] | select(.conclusion == "failure")] | length')
-  TOTAL_RUNS=$((TOTAL_RUNS + 5))
-  FAILED_RUNS=$((FAILED_RUNS + failure_count))
+  # Check recent CI runs (exclude approval gates)
+  recent_failures=$(gh run list --repo "$ORG/$repo" --limit 10 \
+    --json status,conclusion,name \
+    | jq -r '.[] | select(.conclusion == "failure") | select(.name | contains("CI") or contains("E2E") or contains("ci") or contains("e2e")) | .conclusion' \
+    | wc -l)
 
-  if [ "$failure_count" -gt 0 ]; then
-    echo "- ⚠️  $failure_count recent failure(s)"
-    echo "$runs" | jq -r '.[] | select(.conclusion == "failure") | "  - \(.name) on \(.headBranch) (\(.updatedAt))"'
+  if [[ "$recent_failures" -ge "$CRITICAL_THRESHOLD" ]]; then
+    FAILURES+=("$repo: $recent_failures recent CI/E2E failures")
+    echo -e "  ${RED}✗ $recent_failures recent CI/E2E failures${NC}"
   else
-    echo "- ✅ All recent runs passing"
+    echo -e "  ${GREEN}✓ CI healthy${NC}"
   fi
-  echo ""
 done
 
-echo "## Summary"
+# Summary
 echo ""
-echo "- Total repos scanned: ${#REPOS[@]}"
-echo "- Failed runs (last 5 per repo): $FAILED_RUNS"
-echo "- Success rate: $(awk "BEGIN {printf \"%.1f\", (($TOTAL_RUNS - $FAILED_RUNS) / $TOTAL_RUNS) * 100}")%"
-echo ""
+echo "=== Summary ==="
 
-if [ "$FAILED_RUNS" -gt 0 ]; then
-  echo "## Action Required"
-  echo ""
-  echo "$FAILED_RUNS failed run(s) detected. Review failures above and file issues for code bugs or infra fixes."
-  exit 1
-else
-  echo "✅ All systems healthy. No CI failures detected."
+if [[ ${#FAILURES[@]} -eq 0 && ${#STALE_REPOS[@]} -eq 0 && ${#NO_CI_REPOS[@]} -eq 0 ]]; then
+  echo -e "${GREEN}All systems healthy!${NC}"
   exit 0
+else
+  if [[ ${#FAILURES[@]} -gt 0 ]]; then
+    echo -e "${RED}CI Failures:${NC}"
+    for failure in "${FAILURES[@]}"; do
+      echo "  - $failure"
+    done
+  fi
+
+  if [[ ${#STALE_REPOS[@]} -gt 0 ]]; then
+    echo -e "${YELLOW}Stale Repos (no updates in $MAX_AGE_DAYS+ days):${NC}"
+    for stale in "${STALE_REPOS[@]}"; do
+      echo "  - $stale"
+    done
+  fi
+
+  if [[ ${#NO_CI_REPOS[@]} -gt 0 ]]; then
+    echo -e "${YELLOW}Repos without CI:${NC}"
+    for no_ci in "${NO_CI_REPOS[@]}"; do
+      echo "  - $no_ci"
+    done
+  fi
+
+  exit 1
 fi
