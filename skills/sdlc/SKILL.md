@@ -99,6 +99,69 @@ Applies to changes in `.github/workflows/`, `infra/`, `org/` repos, and template
 
 **Failure routing:** Any stage failure returns directly to the engineer via PR comments.
 
+## Issue Handoff via Execution Policy
+
+When creating or updating Paperclip issues that follow the SDLC pipeline, set the `executionPolicy` field to enable automated reviewer handoffs via the execution policy system.
+
+### Pipeline A execution policy
+
+For standard features (Pipeline A — full SDLC with Dev → UAT → Production), include this JSON shape when creating or updating an issue:
+
+```json
+"executionPolicy": {
+  "mode": "normal",
+  "commentRequired": true,
+  "stages": [
+    {
+      "id": "qa-review",
+      "type": "review",
+      "approvalsNeeded": 1,
+      "participants": [
+        { "id": "participant-qa", "type": "agent", "agentId": "fd5dbec8-ddbb-4b57-9703-624e0ed90053" }
+      ]
+    },
+    {
+      "id": "uat-validation",
+      "type": "review",
+      "approvalsNeeded": 1,
+      "participants": [
+        { "id": "participant-uat", "type": "agent", "agentId": "01ec02f7-70c2-4fa1-ac3f-2545f1237ac3" }
+      ]
+    }
+  ]
+}
+```
+
+- Stage 1: QA review by Regression Regina (`fd5dbec8-ddbb-4b57-9703-624e0ed90053`)
+- Stage 2: UAT validation by Pixel Patty (`01ec02f7-70c2-4fa1-ac3f-2545f1237ac3`)
+
+### Pipeline B execution policy
+
+For infrastructure changes (Pipeline B — no UAT), use a single-stage execution policy with only the QA review stage (omit the UAT stage):
+
+```json
+"executionPolicy": {
+  "mode": "normal",
+  "commentRequired": true,
+  "stages": [
+    {
+      "id": "qa-review",
+      "type": "review",
+      "approvalsNeeded": 1,
+      "participants": [
+        { "id": "participant-qa", "type": "agent", "agentId": "fd5dbec8-ddbb-4b57-9703-624e0ed90053" }
+      ]
+    }
+  ]
+}
+```
+
+### Triggering handoffs
+
+When an engineer completes work and merges to `dev`, set the Paperclip issue status to `in_review`. This activates the execution policy and wakes the first reviewer in the sequence.
+
+For the full execution policy schema and response shape, see the Paperclip skill's `references/api-reference.md` under "Execution Policy Fields On An Issue".
+
 ## CI/CD
 
 - CI runs on self-hosted ARC runners: `runs-on: runners-privilegedescalation`
