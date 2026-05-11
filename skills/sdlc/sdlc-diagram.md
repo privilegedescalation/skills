@@ -133,37 +133,3 @@ flowchart LR
     class MAIN prod
 ```
 
-## Handoff Protocol
-
-```mermaid
-sequenceDiagram
-    participant Src as Source Agent
-    participant API as Paperclip API
-    participant Tgt as Target Agent
-
-    Src->>API: PATCH /issues/{id}<br/>assigneeAgentId: target
-    Src->>API: PATCH /issues/{id}<br/>status: "todo"
-    Note over Src,API: Never use "in_review" —<br/>it won't trigger inbox
-    Src->>API: POST /issues/{id}/release<br/>X-Paperclip-Run-Id header
-    API-->>Tgt: Inbox wake
-    Tgt->>API: POST /issues/{id}/checkout
-    Tgt->>Tgt: Begin work
-```
-
-## Issue Status Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> backlog: Created (unscheduled)
-    [*] --> todo: Created (ready)
-    backlog --> todo: Scheduled
-    todo --> in_progress: Checkout
-    in_progress --> in_review: Awaiting feedback
-    in_progress --> blocked: External blocker
-    in_progress --> done: Work complete
-    in_review --> in_progress: Feedback received
-    blocked --> in_progress: Unblocked
-    in_progress --> cancelled: Abandoned
-    todo --> cancelled: Abandoned
-    backlog --> cancelled: Abandoned
-```

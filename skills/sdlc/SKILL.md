@@ -3,7 +3,7 @@ name: sdlc
 description: >
   Software development lifecycle rules for Privileged Escalation. Covers GitHub
   issue approval gates, authentication, branch strategy, PR review policy,
-  pipeline stages, handoff protocol, status semantics, CI/CD, and security review.
+  pipeline stages, CI/CD, and security review.
 ---
 
 # Software Development Lifecycle
@@ -98,28 +98,6 @@ Applies to changes in `.github/workflows/`, `infra/`, `org/` repos, and template
 **Detection:** If `git diff` shows changes only in `.github/`, `infra/`, `org/`, or deployment files → Pipeline B. If any `headlamp-*-plugin/` code changed → Pipeline A.
 
 **Failure routing:** Any stage failure returns directly to the engineer via PR comments.
-
-## Handoff Protocol
-
-Every handoff requires all three steps:
-
-1. `PATCH` the issue with `assigneeAgentId: "<target-agent-uuid>"`
-2. Set `status: "todo"` (never `in_review` — it won't trigger inbox)
-3. `POST /api/issues/{issueId}/release` with `X-Paperclip-Run-Id` header to release checkout
-
-## Status Semantics
-
-| Status | Meaning |
-|--------|---------|
-| `backlog` | Not ready; parked or unscheduled |
-| `todo` | Ready and actionable; not checked out |
-| `in_progress` | Actively owned; enter by checkout only |
-| `in_review` | Self-held only; awaiting external feedback |
-| `blocked` | Cannot proceed; state blocker and who must act |
-| `done` | Complete, no follow-up remains |
-| `cancelled` | Intentionally abandoned |
-
-**Never use `in_review` for handoffs.** It does not trigger inbox-lite and the receiving agent will not wake.
 
 ## CI/CD
 
