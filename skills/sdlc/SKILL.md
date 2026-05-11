@@ -37,13 +37,15 @@ Set the issue to `blocked` until `PAPERCLIP_APPROVAL_STATUS` confirms approval. 
 
 ## Branch Strategy
 
-All plugin repositories use a single long-lived branch:
+All plugin repositories use three long-lived branches representing a promotion chain:
 
-| Branch | Environment | Who merges |
-|--------|-------------|------------|
-| `main` | Production | CEO (Countess von Containerheim) after triple approval |
+| Branch | Environment | Owner | Who merges to it |
+|--------|-------------|-------|-----------------|
+| `dev` | Development | Engineer | Engineer self-merges after CI passes |
+| `uat` | User Acceptance Testing | QA (Regression Regina) | QA merges after code review |
+| `main` | Production | UAT (Pixel Patty) | UAT merges after browser validation |
 
-**Engineers always target `main` via feature branches** — never push directly.
+**Engineers target `dev` via feature branches** — never push directly to any long-lived branch.
 
 Feature branches follow the convention: `<agent-name>/<short-description>` (e.g., `gandalf/add-sealed-secrets-list`).
 
@@ -59,31 +61,43 @@ gh pr create --title "..." --body "... cc @cpfarhood"
 
 **Do not approve a PR with failing tests, type errors, or no coverage for new code.**
 
-Requires **3 approving GitHub reviews** before the CEO merges:
+### Promotion chain
 
-1. **UAT (Pixel Patty)** — E2E browser testing against `headlamp-dev`
-2. **QA (Regression Regina)** — code-level review: test coverage, regressions, edge cases
-3. **CTO (Null Pointer Nancy)** — architecture alignment, code quality, security
+Each promotion is a PR reviewed and merged by its gate owner:
 
-**Review order is mandatory: CI → UAT → QA → CTO → CEO merge.** Each stage gates the next. No agent merges their own PRs.
+1. **feature → dev** — Engineer self-merges after CI passes. No review required. Dev is for validation, not quality gates.
+2. **dev → uat** — QA (Regression Regina) reviews code quality: test coverage, regressions, edge cases. QA merges to `uat` after approval.
+3. **uat → main** — UAT (Pixel Patty) validates the deployed application via Playwright browser testing. UAT merges to `main` after validation passes.
+
+**Each gate owner has merge authority.** No separate merge step by another role. No agent merges their own code to `uat` or `main` — only the gate owner merges promotions they review.
 
 ## Pipeline
 
 ### Pipeline A: Plugin/Feature Changes
 
-CI → UAT (Patty) → QA (Regina) → CTO (Nancy) → CEO merge
+```
+Engineer → PR to dev → self-merge → deploys to dev
+→ Engineer validates on dev
+→ PR from dev → uat → QA reviews → QA merges
+→ Deploys to UAT environment
+→ PR from uat → main → UAT validates → UAT merges
+→ Production
+```
 
 Applies to changes in `headlamp-*-plugin/` repos (plugin code, features, bug fixes).
 
 ### Pipeline B: Infrastructure Changes (No UI Impact)
 
-CI → QA (Regina) → CTO (Nancy) → CEO merge
+```
+Engineer → PR to main → CI passes → QA reviews → QA merges
+→ Production
+```
 
-Applies to changes in `.github/workflows/`, `infra/`, `org/` repos, and template repos.
+Applies to changes in `.github/workflows/`, `infra/`, `org/` repos, and template repos. No UAT stage needed — infrastructure changes have no UI to validate.
 
 **Detection:** If `git diff` shows changes only in `.github/`, `infra/`, `org/`, or deployment files → Pipeline B. If any `headlamp-*-plugin/` code changed → Pipeline A.
 
-**Failure routing:** Any stage failure returns directly to the engineer. CEO rejections route through CTO.
+**Failure routing:** Any stage failure returns directly to the engineer via PR comments.
 
 ## Handoff Protocol
 
@@ -110,9 +124,10 @@ Every handoff requires all three steps:
 ## CI/CD
 
 - CI runs on self-hosted ARC runners: `runs-on: runners-privilegedescalation`
+- CI triggers on PRs to `dev`, `uat`, and `main` branches
 - Engineers may modify `.github/workflows/` files directly via PR
 - Runners scale to zero when idle and start automatically when a workflow triggers
 
 ## Security Review
 
-Security review is handled as part of the CTO review stage. Null Pointer Nancy evaluates security concerns during her architecture and code quality review. There is no separate dedicated security review agent.
+Security review is handled as part of the QA review stage. Regression Regina evaluates security concerns during her code quality review. There is no separate dedicated security review agent.
