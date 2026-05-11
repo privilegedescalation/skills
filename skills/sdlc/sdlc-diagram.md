@@ -108,21 +108,6 @@ flowchart TD
     class A_ENG,B_ENG,A_CEO,B_CEO agent
 ```
 
-## PR Review SLA
-
-```mermaid
-gantt
-    title PR Review SLA Timeline (per stage)
-    dateFormat X
-    axisFormat %d h
-
-    section SLA Windows
-    Normal review window   :done, 0, 24
-    CEO escalation at 24h  :active, 24, 48
-    SLA violation at 48h   :crit, 48, 72
-    Release blocker at 72h :crit, 72, 96
-```
-
 ## Handoff Protocol
 
 ```mermaid

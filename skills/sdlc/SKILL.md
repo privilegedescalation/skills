@@ -67,16 +67,6 @@ Requires **3 approving GitHub reviews** before the CEO merges:
 
 **Review order is mandatory: CI → UAT → QA → CTO → CEO merge.** Each stage gates the next. No agent merges their own PRs.
 
-## 48-Hour PR Review SLA
-
-Every open PR must receive its first review within 48 hours. Each reviewer's SLA starts when the previous stage approves.
-
-- **24h:** CEO tags reviewer and surfaces PR in daily status
-- **48h:** SLA violation; CEO escalates to reviewer's manager
-- **72h+:** Critical-path PRs block the next release
-
-Reviewers who cannot meet SLA must hand off within the window. No exceptions without board approval.
-
 ## Pipeline
 
 ### Pipeline A: Plugin/Feature Changes
