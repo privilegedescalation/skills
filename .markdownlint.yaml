@@ -10,3 +10,6 @@ MD036: false
 
 # Compact table style is allowed
 MD060: false
+
+# Unordered list style (dash vs asterisk) is flexible
+MD004: false
