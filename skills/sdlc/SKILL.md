@@ -99,13 +99,22 @@ Applies to changes in `.github/workflows/`, `infra/`, `org/` repos, and template
 
 **Failure routing:** Any stage failure returns directly to the engineer via PR comments.
 
-## Issue Handoff via Execution Policy
+## Issue Reviewers and Approvers
 
-When creating or updating Paperclip issues that follow the SDLC pipeline, set the `executionPolicy` field to enable automated reviewer handoffs via the execution policy system.
+Every Paperclip issue has **Reviewers** and **Approvers** fields visible in the UI sidebar. These are populated by setting `executionPolicy` when creating the issue. Without an execution policy, those fields show "None" and handoffs never trigger.
 
-### Pipeline A execution policy
+**All stage and participant `id` fields must be random UUIDs.** Generate them at issue-creation time (e.g. via `uuidgen` or your language's UUID library). Do not use descriptive strings — the API rejects non-UUID values.
 
-For standard features (Pipeline A — full SDLC with Dev → UAT → Production), include this JSON shape when creating or updating an issue:
+### Pipeline A — set reviewers on issue creation
+
+For plugin/feature work (Pipeline A), set a two-stage execution policy so QA and UAT appear as reviewers:
+
+```bash
+QA_STAGE_ID=$(uuidgen)
+QA_PART_ID=$(uuidgen)
+UAT_STAGE_ID=$(uuidgen)
+UAT_PART_ID=$(uuidgen)
+```
 
 ```json
 "executionPolicy": {
@@ -113,31 +122,31 @@ For standard features (Pipeline A — full SDLC with Dev → UAT → Production)
   "commentRequired": true,
   "stages": [
     {
-      "id": "qa-review",
+      "id": "<QA_STAGE_ID>",
       "type": "review",
       "approvalsNeeded": 1,
       "participants": [
-        { "id": "participant-qa", "type": "agent", "agentId": "fd5dbec8-ddbb-4b57-9703-624e0ed90053" }
+        { "id": "<QA_PART_ID>", "type": "agent", "agentId": "fd5dbec8-ddbb-4b57-9703-624e0ed90053" }
       ]
     },
     {
-      "id": "uat-validation",
+      "id": "<UAT_STAGE_ID>",
       "type": "review",
       "approvalsNeeded": 1,
       "participants": [
-        { "id": "participant-uat", "type": "agent", "agentId": "01ec02f7-70c2-4fa1-ac3f-2545f1237ac3" }
+        { "id": "<UAT_PART_ID>", "type": "agent", "agentId": "01ec02f7-70c2-4fa1-ac3f-2545f1237ac3" }
       ]
     }
   ]
 }
 ```
 
-- Stage 1: QA review by Regression Regina (`fd5dbec8-ddbb-4b57-9703-624e0ed90053`)
-- Stage 2: UAT validation by Pixel Patty (`01ec02f7-70c2-4fa1-ac3f-2545f1237ac3`)
+- Stage 1 reviewer: Regression Regina (`fd5dbec8-ddbb-4b57-9703-624e0ed90053`)
+- Stage 2 reviewer: Pixel Patty (`01ec02f7-70c2-4fa1-ac3f-2545f1237ac3`)
 
-### Pipeline B execution policy
+### Pipeline B — single reviewer
 
-For infrastructure changes (Pipeline B — no UAT), use a single-stage execution policy with only the QA review stage (omit the UAT stage):
+For infrastructure changes (Pipeline B), use one QA review stage:
 
 ```json
 "executionPolicy": {
@@ -145,22 +154,20 @@ For infrastructure changes (Pipeline B — no UAT), use a single-stage execution
   "commentRequired": true,
   "stages": [
     {
-      "id": "qa-review",
+      "id": "<QA_STAGE_ID>",
       "type": "review",
       "approvalsNeeded": 1,
       "participants": [
-        { "id": "participant-qa", "type": "agent", "agentId": "fd5dbec8-ddbb-4b57-9703-624e0ed90053" }
+        { "id": "<QA_PART_ID>", "type": "agent", "agentId": "fd5dbec8-ddbb-4b57-9703-624e0ed90053" }
       ]
     }
   ]
 }
 ```
 
-### Triggering handoffs
+### Triggering the handoff
 
-When an engineer completes work and merges to `dev`, set the Paperclip issue status to `in_review`. This activates the execution policy and wakes the first reviewer in the sequence.
-
-For the full execution policy schema and response shape, see the Paperclip skill's `references/api-reference.md` under "Execution Policy Fields On An Issue".
+When an engineer completes work and merges to `dev`, set the Paperclip issue status to `in_review`. This activates the execution policy and wakes the first reviewer. Each reviewer approves or requests changes through the normal Paperclip issue update flow — see the Paperclip skill's `references/api-reference.md` for details.
 
 ## CI/CD
 
