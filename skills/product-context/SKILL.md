@@ -20,6 +20,7 @@ Load this section when triaging feature requests, evaluating new plugin proposal
 | **Sealed Secrets** | `headlamp-sealed-secrets-plugin` | Bitnami Sealed Secrets management               | Active |
 | **Intel GPU**      | `headlamp-intel-gpu-plugin`      | Intel GPU device plugin monitoring              | Active |
 | **TrueNAS CSI**    | `headlamp-tns-csi-plugin`        | TrueNAS SCALE CSI driver monitoring             | Active |
+| **Argo CD**        | `headlamp-argocd-plugin`         | Argo CD application delivery management         | Active |
 
 All plugins distributed via **ArtifactHub**, installed through Headlamp's native plugin installer only.
 
@@ -80,7 +81,7 @@ PRI's moat: leading third-party Headlamp plugin developer. Plugins are free, ope
 2. **Does the plugin add value over `kubectl` + the tool's own CLI/UI?**
    * "It shows the same thing but in Headlamp" → weak value prop. Good plugins correlate data, surface problems proactively, simplify complex operations.
 3. **Can Gandalf build and maintain it?**
-   * One engineer can maintain ~6-8 plugins at current complexity. We're at 6 now. New plugins mean either dropping an existing one or hiring.
+   * One engineer can maintain ~6-8 plugins at current complexity. We're at 7 now. New plugins mean either dropping an existing one or hiring.
 4. **Is it installable via ArtifactHub without extras?**
    * Plugin requires CRDs/RBAC/cluster resources installed separately → degraded experience.
    * Unacceptable: plugin requires its own operator or sidecar.
