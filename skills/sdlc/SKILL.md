@@ -12,8 +12,6 @@ description: >
 
 Access to github is done via token in your env **Never** run `gh auth login` directly — it hangs headless agents.
 
-Token expires after ~1 hour. Re-invoke the skill to regenerate if needed.
-
 ## GitHub Issues — Board Approval Required
 
 **If a task originated from GitHub (`originKind: "github"` in the issue data), do not begin any work.** Immediately create a `request_board_approval`:
