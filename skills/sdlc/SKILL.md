@@ -67,7 +67,7 @@ Each promotion is a PR reviewed and merged by its gate owner:
 
 1. **feature → dev** — Engineer self-merges after CI passes. No review required. Dev is for validation, not quality gates.
 2. **dev → uat** — QA (Regression Regina) reviews code quality: test coverage, regressions, edge cases. QA merges to `uat` after approval.
-3. **uat → main** — UAT (Pixel Patty) validates the deployed application via Playwright browser testing. UAT merges to `main` after validation passes.
+3. **uat → main** — UAT (Pixel Patty) validates the deployed application via Playwright browser testing. UAT merges to `main` after validation passes. For detailed UAT testing procedures, see the `uat` company skill.
 
 **Each gate owner has merge authority.** No separate merge step by another role. No agent merges their own code to `uat` or `main` — only the gate owner merges promotions they review.
 
