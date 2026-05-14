@@ -10,7 +10,7 @@ description: >
 
 ## GitHub Authentication
 
-Access to github is done via token in your env **Never** run `gh auth login` directly — it hangs headless agents.
+Access to GitHub is done via token in your env **Never** run `gh auth login` directly — it hangs headless agents.
 
 ## GitHub Issues — Board Approval Required
 
