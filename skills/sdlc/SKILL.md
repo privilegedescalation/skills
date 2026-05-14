@@ -86,6 +86,8 @@ Engineer → PR to dev → self-merge → deploys to dev
 
 Applies to changes in `headlamp-*-plugin/` repos (plugin code, features, bug fixes).
 
+**UAT_PLAYBOOK.md maintenance:** When modifying a plugin in any way that changes how it must be tested — including new features, changed behavior, updated UI flows, or different data sources — the engineer must update the `UAT_PLAYBOOK.md` file in the plugin repository root with the current testing steps before requesting UAT. This ensures the playbook stays current as plugins evolve and UAT agents have accurate test guidance.
+
 ### Pipeline B: Infrastructure Changes (No UI Impact)
 
 ```
