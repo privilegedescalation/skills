@@ -10,7 +10,7 @@ description: >
 
 ## GitHub Authentication
 
-**Invoke the `github-app-token` skill** before any GitHub operation. It generates a short-lived installation token and sets `GH_TOKEN`. **Never** run `gh auth login` directly — it hangs headless agents.
+Access to github is done via token in your env **Never** run `gh auth login` directly — it hangs headless agents.
 
 Token expires after ~1 hour. Re-invoke the skill to regenerate if needed.
 
