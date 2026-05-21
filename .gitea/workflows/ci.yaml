@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install linters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck yamllint
+
+      - name: Lint Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: "**/*.md"
+
+      - name: Lint YAML
+        run: yamllint .
+
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
+
+      - name: Validate skill frontmatter
+        run: |
+          set -e
+          fail=0
+          for f in skills/*/SKILL.md; do
+            fm=$(awk 'BEGIN{c=0} /^---$/{c++; next} c==1{print} c>=2{exit}' "$f")
+            for key in name description; do
+              if ! printf '%s\n' "$fm" | grep -qE "^${key}:[[:space:]]"; then
+                echo "::error file=${f}::missing '${key}' in YAML frontmatter"
+                fail=1
+              fi
+            done
+          done
+          exit $fail
