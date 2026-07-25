@@ -73,48 +73,67 @@ GH_CONFIG_DIR="$AGENT_HOME/.github" gh auth status 2>&1
 
 and verify the `Active account:` line before proceeding.
 
-### Rule 4 — Never source `~/.env` to load `GH_CONFIG_DIR`
+### Rule 4 — Never source a shared shell-init file to load `GH_CONFIG_DIR`
 
-`~/.env` (`/paperclip/.env`) accumulates `export GH_CONFIG_DIR=…` lines from
-every agent that has ever run on this host. Sourcing it without sanitisation
-loads the most recently appended value, which may belong to any other agent.
+`$HOME` (`/paperclip`) is shared across every agent workspace. `~/.env`,
+`~/.bashrc`, `~/.bash_profile`, and `~/.profile` can all accumulate
+`export GH_CONFIG_DIR=…` lines left behind by any agent that has ever run on
+this host — and `~/.bashrc` in particular is sourced automatically by every
+new shell. A stale entry there silently hands every subsequent agent's shell
+the wrong bot's config dir with no sourcing action required on that agent's
+part. (This is the exact fossil `fix-env-contamination.sh` found and removed
+from `/paperclip/.bashrc` during the PRI-1904 rollout — a `GH_CONFIG_DIR`
+pointing at another agent's workspace, sourced by every shell since it was
+written.)
 
 Instead source `$AGENT_HOME/.env` (the per-agent dotfile written by
-`agent-setup`):
+`agent-setup`), and run `fix-env-contamination.sh` to strip any shared-file
+contamination:
 
 ```bash
 # Correct
 [[ -f "$AGENT_HOME/.env" ]] && source "$AGENT_HOME/.env"
-# Then re-derive to be safe
-export GH_CONFIG_DIR="$AGENT_HOME/.github"
+# Then re-derive to be safe, and clean any shared-file contamination
+bash skills/gh-identity-guard/scripts/fix-env-contamination.sh
 ```
 
 ## Usage in Practice
 
-### At heartbeat start (after agent-setup)
+The guard is invoked in three stages, wired org-wide via the `safety` skill
+(see `skills/safety/SKILL.md`, "GitHub Identity Isolation") so it applies to
+every agent without per-agent `AGENTS.md` edits:
+
+### 1. At heartbeat start, after `agent-setup`, before `github-app-token`
 
 ```bash
-# 1. agent-setup sets GH_CONFIG_DIR=$AGENT_HOME/.github — but source the
-#    per-agent file, not the global ~/.env, and then re-assert to be safe.
-[[ -f "$AGENT_HOME/.env" ]] && source "$AGENT_HOME/.env"
-export GH_CONFIG_DIR="$AGENT_HOME/.github"
-mkdir -p "$GH_CONFIG_DIR"
+bash skills/gh-identity-guard/scripts/fix-env-contamination.sh
 ```
 
-### After github-app-token to confirm correct identity
+Re-derives `GH_CONFIG_DIR=$AGENT_HOME/.github`, strips stale exports from any
+shared shell-init file (`~/.env`, `~/.bashrc`, `~/.bash_profile`, `~/.profile`),
+and writes the correct value to `$AGENT_HOME/.env` only.
+
+### 2. Immediately after `github-app-token` mints this agent's token
 
 ```bash
-# 2. After generating the token, confirm the active account is correct.
-GH_CONFIG_DIR="$AGENT_HOME/.github" gh auth status 2>&1 | grep -E "Active account: true|Logged in"
+bash skills/gh-identity-guard/scripts/record-identity.sh
 ```
 
-### Before every PR review or comment
+Captures whatever identity is active right after this agent's own token was
+minted and writes it to `$AGENT_HOME/.expected-gh-login`. This is the
+canonical baseline for step 3 — no hardcoded `AGENT_HOME`->login table needed.
+
+### 3. Before every official GitHub write (PR review, comment, push, merge)
 
 ```bash
-# 3. Assert identity before submitting the review.
-bash skills/gh-identity-guard/scripts/assert-identity.sh "hugh-hackman-pe[bot]"
+bash skills/gh-identity-guard/scripts/assert-identity.sh
 GH_CONFIG_DIR="$AGENT_HOME/.github" gh pr review <PR_NUMBER> --approve --body "..."
 ```
+
+With no argument, `assert-identity.sh` checks the current active login
+against `$AGENT_HOME/.expected-gh-login` from step 2. Pass an explicit login
+(e.g. `"hugh-hackman-pe[bot]"`) instead if you want to assert against a known
+value rather than the recorded baseline.
 
 ## Cross-Contamination Self-Test
 
@@ -138,9 +157,24 @@ echo "PASS: GH_CONFIG_DIR is correctly isolated to $AGENT_HOME"
 ## Upstream fix tracking
 
 The root fix in `agent-setup` and `github-app-token` scripts (from
-`farhoodlabs/skills`) needs to be upstreamed. Until those changes land and are
-deployed, this skill provides the agent-level defence.
+`farhoodlabs/skills`) still needs to be upstreamed — PE cannot patch that repo
+directly (404s to the PE GitHub App). Until those changes land and are
+deployed, this skill's invocation via `safety` (see PRI-1904) is the
+agent-level defence-in-depth.
 
 Required upstream changes (tracked in [PRI-1791](/PRI/issues/PRI-1791)):
-- `agent-setup/scripts/setup.sh`: validate `GH_CONFIG_DIR` is inside `AGENT_HOME`; write to `$AGENT_HOME/.env`, not `~/.env`
+- `agent-setup/scripts/setup.sh`: validate `GH_CONFIG_DIR` is inside `AGENT_HOME`; write to `$AGENT_HOME/.env`, not `~/.env` or `~/.bashrc`
 - `github-app-token/scripts/generate-token.sh`: validate `GH_CONFIG_DIR` is inside `AGENT_HOME`; pass `GH_CONFIG_DIR` explicitly on the `gh auth login` invocation
+
+## Known platform gap (tracked separately, not fixed by this PR)
+
+This skill directory is not currently included in the platform's per-agent
+runtime-skill materialization set — confirmed by inspecting a live agent's
+`runtime-skills/claude/.../.claude/skills/` tree, which had `safety`, `sdlc`,
+`agent-setup`, `github-app-token`, etc. materialized but not
+`gh-identity-guard`. That's why the wiring in `skills/safety/SKILL.md` inlines
+the concrete commands rather than only pointing at this skill by reference —
+`safety` is guaranteed present; this directory may not be. Making
+`gh-identity-guard` itself a materialized skill for every agent is a platform
+config change outside this repo's control; see the follow-up issue filed
+against PRI-1904 for CTO/platform visibility.
