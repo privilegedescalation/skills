@@ -52,19 +52,18 @@ else
   fail "Per-agent .env not found at $AGENT_ENV"
 fi
 
-# Test 4: Global ~/.env does NOT contain workspace-scoped GH_CONFIG_DIR entries
-GLOBAL_ENV="$HOME/.env"
-if [[ -f "$GLOBAL_ENV" ]]; then
-  WORKSPACE_ROOT=$(dirname "$(dirname "$AGENT_HOME")")
-  CONTAMINATION=$(grep "^export GH_CONFIG_DIR=.*workspaces" "$GLOBAL_ENV" 2>/dev/null || true)
-  if [[ -z "$CONTAMINATION" ]]; then
-    pass "Global ~/.env has no workspace-scoped GH_CONFIG_DIR (no contamination)"
-  else
-    fail "Global ~/.env still has contaminated entries:\n$CONTAMINATION"
-    echo "  Fix: run scripts/fix-env-contamination.sh" >&2
+# Test 4: no shared shell-init file contains a GH_CONFIG_DIR export
+CONTAMINATED=0
+for f in "$HOME/.env" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+  if [[ -f "$f" ]] && grep -q '^export GH_CONFIG_DIR=' "$f" 2>/dev/null; then
+    fail "$f still has a GH_CONFIG_DIR export:\n$(grep '^export GH_CONFIG_DIR=' "$f")"
+    CONTAMINATED=1
   fi
+done
+if [[ "$CONTAMINATED" -eq 0 ]]; then
+  pass "No shared shell-init file (~/.env, ~/.bashrc, ~/.bash_profile, ~/.profile) has a GH_CONFIG_DIR export"
 else
-  pass "Global ~/.env does not exist (no contamination risk)"
+  echo "  Fix: run scripts/fix-env-contamination.sh" >&2
 fi
 
 # Test 5: gh CLI uses per-agent config dir
@@ -78,6 +77,33 @@ if command -v gh >/dev/null 2>&1; then
   fi
 else
   echo "SKIP: gh CLI not found, skipping auth test"
+fi
+
+# Test 6: record-identity.sh + assert-identity.sh round trip, and mismatch detection
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if command -v gh >/dev/null 2>&1 && GH_CONFIG_DIR="$AGENT_HOME/.github" gh auth status 2>&1 | grep -q "Active account: true"; then
+  if bash "$SCRIPT_DIR/record-identity.sh" >/dev/null 2>&1 && [[ -f "$AGENT_HOME/.expected-gh-login" ]]; then
+    pass "record-identity.sh wrote $AGENT_HOME/.expected-gh-login"
+    if bash "$SCRIPT_DIR/assert-identity.sh" >/dev/null 2>&1; then
+      pass "assert-identity.sh (no arg) passes against the recorded baseline"
+    else
+      fail "assert-identity.sh (no arg) failed against its own just-recorded baseline"
+    fi
+    # Simulate cross-contamination: a different recorded login must be rejected.
+    echo "some-other-agent-pe[bot]" > "$AGENT_HOME/.expected-gh-login.testbak"
+    cp "$AGENT_HOME/.expected-gh-login" "$AGENT_HOME/.expected-gh-login.orig"
+    mv "$AGENT_HOME/.expected-gh-login.testbak" "$AGENT_HOME/.expected-gh-login"
+    if bash "$SCRIPT_DIR/assert-identity.sh" >/dev/null 2>&1; then
+      fail "assert-identity.sh (no arg) did NOT reject a mismatched recorded login"
+    else
+      pass "assert-identity.sh (no arg) correctly rejects a mismatched recorded login"
+    fi
+    mv "$AGENT_HOME/.expected-gh-login.orig" "$AGENT_HOME/.expected-gh-login"
+  else
+    fail "record-identity.sh did not produce $AGENT_HOME/.expected-gh-login"
+  fi
+else
+  echo "SKIP: gh not authenticated, skipping record/assert round-trip test"
 fi
 
 echo ""

@@ -2,8 +2,15 @@
 # Assert that the currently authenticated gh CLI identity matches the expected
 # bot login. Exits non-zero with a clear error if there is a mismatch.
 #
-# Usage: assert-identity.sh <expected-gh-login>
+# Usage: assert-identity.sh [expected-gh-login]
 # Example: assert-identity.sh "hugh-hackman-pe[bot]"
+#
+# If no argument is given, falls back to the login recorded in
+# $AGENT_HOME/.expected-gh-login by record-identity.sh (written right after
+# github-app-token mints this agent's own token). This avoids needing a
+# hardcoded AGENT_HOME->login mapping or per-agent AGENTS.md edits: whatever
+# identity this agent generated its own token as, at the point it generated
+# it, becomes the baseline every later gh call is checked against.
 #
 # Requires: GH_CONFIG_DIR to be correctly set to $AGENT_HOME/.github
 set -euo pipefail
@@ -16,6 +23,12 @@ EXPECTED_LOGIN="${1:-}"
 # --- Validate GH_CONFIG_DIR is under AGENT_HOME ---
 if [[ -z "${AGENT_HOME:-}" ]]; then
   die "AGENT_HOME is not set — cannot validate GH_CONFIG_DIR isolation"
+fi
+
+# Fall back to the recorded canonical identity for this agent, if no explicit
+# expected login was passed in.
+if [[ -z "$EXPECTED_LOGIN" && -f "$AGENT_HOME/.expected-gh-login" ]]; then
+  EXPECTED_LOGIN=$(cat "$AGENT_HOME/.expected-gh-login")
 fi
 
 # Re-derive GH_CONFIG_DIR defensively; never trust an inherited value
@@ -70,5 +83,6 @@ Re-run 'github-app-token' skill with GH_CONFIG_DIR=$GH_CONFIG_DIR to refresh aut
   fi
   echo "Identity verified: $ACTIVE_LOGIN matches expected $EXPECTED_LOGIN"
 else
-  echo "No expected login provided — identity check passed (active: $ACTIVE_LOGIN)"
+  warn "No expected login provided or recorded — run record-identity.sh right after minting this agent's token so future calls have a baseline to check against."
+  echo "No expected login available — identity check skipped (active: $ACTIVE_LOGIN)"
 fi
