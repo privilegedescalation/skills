@@ -19,7 +19,7 @@ Load this section when triaging feature requests, evaluating new plugin proposal
 | **Rook/Ceph**      | `headlamp-rook-plugin`           | Rook-Ceph storage cluster monitoring            | Active |
 | **Sealed Secrets** | `headlamp-sealed-secrets-plugin` | Bitnami Sealed Secrets management               | Active |
 | **Intel GPU**      | `headlamp-intel-gpu-plugin`      | Intel GPU device plugin monitoring              | Active |
-| **TrueNAS CSI**    | `headlamp-tns-csi-plugin`        | TrueNAS SCALE CSI driver monitoring             | Active |
+| **TrueNAS CSI**    | `headlamp-tns-csi-plugin`        | TrueNAS SCALE CSI driver monitoring             | Archived |
 | **Argo CD**        | `headlamp-argocd-plugin`         | Argo CD application delivery management         | Active |
 
 All plugins distributed via **ArtifactHub**, installed through Headlamp's native plugin installer only.

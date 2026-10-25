@@ -23,7 +23,6 @@ REPOS=(
   "headlamp-rook-plugin"
   "headlamp-intel-gpu-plugin"
   "headlamp-kube-vip-plugin"
-  "headlamp-tns-csi-plugin"
   "headlamp-argocd-plugin"
   "headlamp-polaris-plugin"
 )
